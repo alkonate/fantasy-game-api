@@ -3,6 +3,7 @@ package com.example.fantasygame.api.module.hero.infrastructure;
 import com.example.fantasygame.api.module.hero.model.HeroProfile;
 import com.example.fantasygame.api.module.hero.model.HeroRepository;
 import com.example.fantasygame.api.module.hero.model.valueobject.HeroProfileId;
+import com.example.fantasygame.api.module.hero.model.valueobject.Name;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -18,11 +19,10 @@ public class InMemoryHeroProfileRepository implements HeroRepository {
     }
 
     @Override
-    public Optional<HeroProfile> findByName(String name) {
-        if(name == null){
-            return Optional.empty();
-        }
-
-        return Optional.empty();
+    public Optional<HeroProfile> findByName(Name name) {
+      return heroes.values()
+               .stream()
+               .filter(hero -> hero.name().equals(name))
+               .findFirst();
     }
 }

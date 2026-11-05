@@ -8,5 +8,10 @@ public record HeroProfileId(UUID value) {
         Objects.requireNonNull(value, "HeroProfileId value is required");
     }
 
+    @Override
+    public String toString() {
+        return "HeroProfileId{" + "value=" + value + '}';
+    }
+
     public static HeroProfileId generate() { return new HeroProfileId(UUID.randomUUID()); }
 }

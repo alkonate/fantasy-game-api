@@ -9,9 +9,9 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class TestInMemoryHeroProfileRepository extends InMemoryHeroProfileRepository {
-    public TestInMemoryHeroProfileRepository assertIsEmpty() {
+
+    public void assertIsEmpty() {
         assertTrue(heroes.isEmpty(), "Heroes should be empty");
-        return this;
     }
 
     public TestInMemoryHeroProfileRepository assertCount(int count) {
@@ -26,4 +26,13 @@ public class TestInMemoryHeroProfileRepository extends InMemoryHeroProfileReposi
 
         return Optional.empty();
     }
+
+    public void clear(){
+        heroes.clear();
+    }
+
+    public int count(){
+        return heroes.size();
+    }
+
 }
