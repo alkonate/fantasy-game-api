@@ -41,3 +41,11 @@ Feature: Création du profil du héros
     Then Le profil n'est pas créé
     And Une erreur de joueur introuvable est levée
     And Aucun événement n'est publié
+
+  Scenario: Refus d'une espèce de héros inconnue
+    Given Je suis enregistré comme joueur
+    And Aucun profil de héros n'existe encore
+    When Je crée un profil de héros d'espèce "DRAGON"
+    Then Le profil n'est pas créé
+    And Une erreur d'espèce inconnue est levée
+    And Aucun événement n'est publié

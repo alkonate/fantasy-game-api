@@ -36,8 +36,8 @@ public class HeroProfileService implements CreateHeroProfileUseCase {
         var profile = HeroProfile.create(
                 new PlayerId(cmd.playerId()),
                 new Name(cmd.name()),
-                Species.valueOf(cmd.species()),
-                HeroClass.valueOf(cmd.heroClass()),
+                Species.from(cmd.species()),
+                HeroClass.from(cmd.heroClass()),
                 Abilities.chosenFromNames(cmd.abilities())
         );
 
