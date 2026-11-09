@@ -10,7 +10,7 @@ import java.util.Optional;
 import static org.junit.jupiter.api.Assertions.*;
 
 public class TestInMemoryEventBus extends InMemoryEventBus {
-    private List<IntegrationEvent> publishedEvents = new ArrayList<>();
+    private final List<IntegrationEvent> publishedEvents = new ArrayList<>();
 
     @Override
     public <T extends IntegrationEvent> void publish(T event) {
@@ -18,8 +18,8 @@ public class TestInMemoryEventBus extends InMemoryEventBus {
         super.publish(event);
     }
 
-    public Optional<IntegrationEvent> getLastEvent(){
-        return Optional.ofNullable(publishedEvents.getLast());
+    public Optional<IntegrationEvent> getLastEvent() {
+        return publishedEvents.isEmpty() ? Optional.empty() : Optional.of(publishedEvents.getLast());
     }
 
     public TestInMemoryEventBus assertEventCount(int expectedCount) {
@@ -33,7 +33,7 @@ public class TestInMemoryEventBus extends InMemoryEventBus {
     }
 
     public <T extends IntegrationEvent> T assertLastEventOfType(Class<T> expectedEventType) {
-        assertInstanceOf(expectedEventType, publishedEvents.getLast().getClass(),"Incorrect type of event");
-        return expectedEventType.cast(publishedEvents.getLast());
+        var last = getLastEvent().orElseThrow(() -> new AssertionError("No event was published"));
+        return assertInstanceOf(expectedEventType, last, "Incorrect type of event");
     }
 }

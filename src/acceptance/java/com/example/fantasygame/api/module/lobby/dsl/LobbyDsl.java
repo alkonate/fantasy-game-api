@@ -2,14 +2,17 @@ package com.example.fantasygame.api.module.lobby.dsl;
 
 import com.example.fantasygame.api.module.lobby.application.CreateLobbyCommand;
 import com.example.fantasygame.api.module.lobby.context.LobbyCucumberContext;
+import com.example.fantasygame.api.module.lobby.model.exception.PlayerAlreadyInLobbyException;
 import com.example.fantasygame.api.module.lobby.model.exception.PlayerNotFoundException;
 import com.example.fantasygame.api.module.lobby.model.Lobby;
 import com.example.fantasygame.api.module.lobby.model.valueobject.LobbyId;
 import com.example.fantasygame.api.module.lobby.model.valueobject.PlayerId;
+import com.example.fantasygame.api.shared.contracts.IntegrationEvent;
 import com.example.fantasygame.api.shared.contracts.lobby.LobbyCreatedIntegrationEvent;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
@@ -88,3 +91,55 @@ public class LobbyDsl {
     }
 
     public void assertPlayerAlreadyInLobbyErrorIsRaised() {
+        assertInstanceOf(PlayerAlreadyInLobbyException.class, ctx.getCaughtException(),
+                "Expected a PlayerAlreadyInLobbyException");
+    }
+
+    public void assertNoEventIsPublished() {
+        ctx.getBus().assertIsEmpty();
+    }
+
+    // --- Access ---
+
+    public LobbyId lastLobbyId() {
+        return ctx.getLastResultAs(LobbyId.class)
+                .orElseThrow(() -> new AssertionError(
+                        "No lobby id in the context. Caught exception: " + ctx.getCaughtException(),
+                        ctx.getCaughtException()));
+    }
+
+    private Lobby lastLobby() {
+        LobbyId id = lastLobbyId();                    // fails with the real cause first
+        return ctx.getRepository().assertCount(1).findById(id)
+                .orElseThrow(() -> new AssertionError("No lobby saved."));
+    }
+
+    // --- Events ---
+
+    private <T extends IntegrationEvent> T assertEventIsPublished(String expectedType, Class<T> type) {
+        var event = ctx.getBus()
+                .assertEventCount(1)
+                .getLastEvent()
+                .orElseThrow(() -> new AssertionError("No last event"));
+
+        assertEquals(expectedType, event.getEventType(), "Event type");
+        return assertInstanceOf(type, event, "Unexpected event class");
+    }
+
+    // --- Domain -> feature text ---
+
+    private Map<String, String> snapshot(Lobby lobby) {
+        Map<String, String> m = new LinkedHashMap<>();
+        m.put("host", nameOf(lobby.host()));
+        m.put("players", lobby.players().stream().map(this::nameOf).collect(Collectors.joining(", ")));
+        return m;
+    }
+
+    private String nameOf(PlayerId player) {                    // "moi", or the raw id if unknown
+        return namedPlayers.entrySet().stream()
+                .filter(e -> e.getValue().equals(player))
+                .map(Map.Entry::getKey)
+                .findFirst()
+                .orElse(player.value().toString());
+    }
+}

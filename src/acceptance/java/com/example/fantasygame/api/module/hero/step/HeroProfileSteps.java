@@ -50,6 +50,11 @@ public class HeroProfileSteps {
         dsl.attemptsToCreateProfileNamed(name);
     }
 
+    @When("Je crée un profil de héros d'espèce {string}")
+    public void jeCreeUnProfilDEspece(String species) {
+        dsl.attemptsToCreateProfileOfSpecies(species);
+    }
+
     // --- Then ---
 
     @Then("Le profil du héros est enregistré avec:")
@@ -71,6 +76,11 @@ public class HeroProfileSteps {
     @And("Une erreur de joueur introuvable est levée")
     public void uneErreurDeJoueurIntrouvableEstLevee() {
         dsl.assertPlayerNotFoundErrorIsRaised();
+    }
+
+    @And("Une erreur d'espèce inconnue est levée")
+    public void uneErreurDEspeceInconnueEstLevee() {
+        dsl.assertUnknownSpeciesErrorIsRaised();
     }
 
 }

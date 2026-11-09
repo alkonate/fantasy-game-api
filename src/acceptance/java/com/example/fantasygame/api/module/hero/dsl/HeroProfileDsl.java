@@ -4,6 +4,7 @@ package com.example.fantasygame.api.module.hero.dsl;
 import com.example.fantasygame.api.module.hero.application.CreateHeroProfileCommand;
 import com.example.fantasygame.api.module.hero.context.HeroProfileCucumberContext;
 import com.example.fantasygame.api.module.hero.model.Exception.HeroNameAlreadyExistsException;
+import com.example.fantasygame.api.module.hero.model.Exception.InvalidHeroSpeciesException;
 import com.example.fantasygame.api.module.hero.model.Exception.PlayerNotFoundException;
 import com.example.fantasygame.api.module.hero.model.HeroProfile;
 import com.example.fantasygame.api.module.hero.model.valueobject.*;
@@ -26,6 +27,7 @@ public class HeroProfileDsl {
             "STRENGTH 10, DEXTERITY 10, CONSTITUTION 10, INTELLIGENCE 10, WISDOM 10, CHARISMA 10";
 
     private static final Map<String, String> DEFAULT_INPUT = Map.of(
+            "name", "Yal",
             "species", "HUMAN",
             "heroClass", "WARRIOR",
             "abilities", DEFAULT_ABILITIES);
@@ -62,6 +64,12 @@ public class HeroProfileDsl {
     public void attemptsToCreateProfileNamed(String name) {
         Map<String, String> input = new LinkedHashMap<>(DEFAULT_INPUT);
         input.put("name", name);
+        createHeroProfile(input);
+    }
+
+    public void attemptsToCreateProfileOfSpecies(String species) {
+        Map<String, String> input = new LinkedHashMap<>(DEFAULT_INPUT);
+        input.put("species", species);
         createHeroProfile(input);
     }
 
@@ -119,6 +127,11 @@ public class HeroProfileDsl {
     public void assertPlayerNotFoundErrorIsRaised() {
         assertInstanceOf(PlayerNotFoundException.class, ctx.getCaughtException(),
                 "Expected a PlayerNotFoundException");
+    }
+
+    public void assertUnknownSpeciesErrorIsRaised() {
+        assertInstanceOf(InvalidHeroSpeciesException.class, ctx.getCaughtException(),
+                "Expected an InvalidHeroSpeciesException");
     }
 
     public void assertNoEventIsPublished() {

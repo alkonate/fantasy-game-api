@@ -1,3 +1,5 @@
 package com.example.fantasygame.api.module.lobby.application;
 
-public record CreateLobbyCommand() {}
+import java.util.UUID;
+
+public record CreateLobbyCommand(UUID playerId) {}

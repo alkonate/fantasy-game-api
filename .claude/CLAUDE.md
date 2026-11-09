@@ -1,6 +1,6 @@
 # API RPG fantasy au tour par tour (projet de session 420-310-MV)
 
-Le sujet complet est dans `docs/Projet_de_session_API_RPG_A26.pdf`. Il fait foi. Les clarifications du
+Le sujet complet est dans `doc/Projet_de_session_API_RPG_A26.pdf`. Il fait foi. Les clarifications du
 client font partie du besoin. Ne jamais inventer une règle du domaine : si le document est ambigu,
 noter la question dans la section « Questions ouvertes » et demander.
 
@@ -9,14 +9,36 @@ Principe directeur : le serveur est la source de vérité. L'API exprime des act
 Stockage en mémoire seulement (aucune base de données dans cette version).
 
 ## Commandes
-<!-- À compléter après /init : build, tests unitaires, tests Cucumber, lancement. -->
+Java 21, Maven (pas de wrapper dans le dépôt). Aucune application à lancer : pas encore de couche web.
+- `mvn test` : tests unitaires seulement (`src/test`).
+- `mvn verify` : tests unitaires + tests d'acceptation Cucumber (classes `*AcceptanceTest`, via failsafe).
+- Un seul contexte : `mvn verify -Dit.test=HeroProfileAcceptanceTest` (unitaires : `mvn test -Dtest=NameTest`).
+- `src/acceptance/java` et `src/acceptance/resources` sont ajoutés aux sources de test par
+  `build-helper-maven-plugin`. Ils sont donc compilés aussi par `mvn test` : un code d'acceptance qui ne
+  compile pas bloque les tests unitaires.
 
 ## Structure
-- Packages `com.example.fantasygame.api.module.<contexte>` (hero, lobby, ...) et
-  `com.example.fantasygame.api.shared.contracts` (événements d'intégration).
-- Par contexte : `model` (agrégats, value objects, exceptions), `application` (use cases, commandes,
-  gateways), et côté tests : `context`, `dsl`, `step`.
-- Vérifier que ces noms correspondent au code réel avant de s'y fier.
+```
+src/main/java/com/example/fantasygame/api/
+  module/<contexte>/            hero, lobby, ...
+    model/                      agrégat, interface du repository
+      exception/                exceptions métier (hero utilise encore `Exception`, à renommer)
+      valueobject/              value objects et enums du domaine
+    application/                <Action>UseCase (interface), <Action>Command (record), <Contexte>Service, gateways
+    infrastructure/             adapters en mémoire (InMemory<Agrégat>Repository)
+  shared/                       InMemoryEventBus
+    contracts/                  IntegrationEvent, IntegrationEventBus
+      <contexte>/               événements d'intégration publiés par ce contexte
+src/test/java/...               tests unitaires, même arborescence que main
+src/acceptance/
+  resources/<contexte>/...      fichiers .feature (Gherkin en français)
+  java/.../module/<contexte>/
+    <Contexte>AcceptanceTest    runner @Suite (sélectionne les features et le glue du contexte)
+    context/                    état partagé d'un scénario, câblage du service avec les faux
+    dsl/                        <Contexte>Dsl : givens, actions, assertions
+    step/                       steps Cucumber (une ligne vers le DSL)
+    infrastructure/             faux : FakePlayerGateway, TestInMemoryEventBus, TestInMemory<Agrégat>Repository
+```
 
 ## Décisions d'architecture (DDD)
 - Un contexte borné par domaine : joueur, héros (profil du héros), lobby, partie, combat. Un contexte
@@ -44,7 +66,7 @@ Stockage en mémoire seulement (aucune base de données dans cette version).
 - PV max au niveau 1 = PV de base de la classe + modificateur de la Constitution **finale**, minimum 1.
 - Le niveau se déduit de l'XP (`Experience.level()`), il n'est pas stocké séparément.
 - Le nom est unique dans tout le système : vérifié dans le use case, pas dans `Name`.
-- Le trim du nom se fait à l'entrée ; `Name` reste strict.
+- Le trim du nom se fait à l'entrée (use case) ; `Name` reste strict. Pas encore implémenté.
 - `Species` et `HeroClass` sont des enums qui portent leurs règles (bonus, PV de base, magie, équipement).
 
 ## Conventions de tests unitaires
@@ -53,7 +75,8 @@ Stockage en mémoire seulement (aucune base de données dans cette version).
 - Chaque règle se teste sur le value object qui la porte (`NameTest`, `AbilityTest`, `ExperienceTest`...).
   `HeroProfileTest` ne teste que l'assemblage.
 - Tester les valeurs limites (2 / 30 / 31 caractères, 299 / 300 XP, 18 + bonus contre le plafond de 20).
-- Les dés sont injectés pour pouvoir fixer un d20 à 1 ou 20, des dégâts précis, un soin précis.
+- Dès qu'il y aura des dés (combat), ils seront injectés pour pouvoir fixer un d20 à 1 ou 20, des
+  dégâts précis, un soin précis. Pas de dés dans le code actuel.
 
 ## Conventions des tests d'acceptation (Cucumber)
 - Un runner et un glue séparés par contexte. Les mêmes phrases peuvent exister dans deux contextes.
@@ -81,6 +104,8 @@ Stockage en mémoire seulement (aucune base de données dans cette version).
 - Restrictions d'équipement : les « armes de mêlée » du Guerrier incluent-elles le bâton et la dague ?
 
 ## État d'avancement
-- Fait : contexte héros (création du profil : nominal, nom déjà utilisé, joueur inconnu).
-- En cours : contexte lobby (création du lobby avec événement `LobbyCreatedEvent`).
+- Fait : contexte héros (création du profil : nominal, nom déjà utilisé, joueur inconnu, espèce inconnue).
+- Fait : contexte lobby (création du lobby : nominal avec événement `LobbyCreatedEvent`, joueur inconnu,
+  joueur déjà dans un lobby). Repose sur deux hypothèses non confirmées (questions ouvertes « Lobby ») :
+  le créateur devient `host` et premier joueur ; un joueur n'est que dans un seul lobby à la fois.
 - À faire : rejoindre, choisir un héros, lancer la partie, puis partie, rencontres, combat.
