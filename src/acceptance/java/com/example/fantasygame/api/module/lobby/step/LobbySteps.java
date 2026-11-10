@@ -29,7 +29,12 @@ public class LobbySteps {
 
     @And("Je suis déjà dans un lobby")
     public void jeSuisDejaDansUnLobby() {
-        dsl.givenPlayerIsAlreadyInALobby();
+        dsl.savePlayerInLobby();
+    }
+
+    @And("Un lobby créé par {string} existe")
+    public void unLobbyCreeParExiste(String hostName) {
+        dsl.saveLobbyCreatedBy(hostName);
     }
 
     // --- When ---
@@ -39,11 +44,21 @@ public class LobbySteps {
         dsl.createLobby();
     }
 
+    @When("Je rejoins le lobby")
+    public void jeRejoinsLeLobby() {
+        dsl.joinLobby();
+    }
+
     // --- Then ---
 
     @Then("Le lobby est créé avec:")
     public void leLobbyEstCree(DataTable table) {
         dsl.assertLobbyIsCreatedWith(table.asMap(String.class, String.class));
+    }
+
+    @Then("Le lobby contient:")
+    public void leLobbyContient(DataTable table) {
+        dsl.assertLobbyContains(table.asMap(String.class, String.class));
     }
 
     @Then("Le lobby n'est pas créé")

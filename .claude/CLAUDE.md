@@ -1,6 +1,8 @@
 # API RPG fantasy au tour par tour (projet de session 420-310-MV)
 
-Le sujet complet est dans `doc/Projet_de_session_API_RPG_A26.pdf`. Il fait foi. Les clarifications du
+Le sujet complet est dans `doc/Projet_de_session_API_RPG_A26.pdf`. Il fait foi. Pour le consulter, chercher
+dans sa version texte `doc/sujet.txt` (générée par `pdftotext -layout`) plutôt que de lire le PDF ; la
+régénérer si le PDF change. Les clarifications du
 client font partie du besoin. Ne jamais inventer une règle du domaine : si le document est ambigu,
 noter la question dans la section « Questions ouvertes » et demander.
 
@@ -81,7 +83,11 @@ src/acceptance/
 ## Conventions des tests d'acceptation (Cucumber)
 - Un runner et un glue séparés par contexte. Les mêmes phrases peuvent exister dans deux contextes.
 - Steps minces : une ligne par step qui appelle le DSL. Le DSL (`<Contexte>Dsl`) fait la traduction et les assertions.
-- Méthodes du DSL qui vérifient : préfixe `assert`.
+- Méthodes du DSL nommées par une action au présent :
+  - Given : prépare l'état directement (repository, faux) : `save...`, `delete...`, `register...`
+    (`savePlayerInLobby`, `saveLobbyCreatedBy("Alice")`, `deleteAllHeroProfiles`, `registerDefaultPlayer`) ;
+  - When : le nom du use case appelé (`createLobby`, `joinLobby`, `createHeroProfileNamed("Yal")`) ;
+  - Then : préfixe `assert`.
 - Le `Given` prépare l'état via le repository, jamais via le use case (pas d'événement, pas de dépendance au comportement testé).
 - Seul le `When` appelle le use case. Il intercepte l'exception et la range dans le contexte.
 - Un seul `Then` avec un tableau clé/valeur pour décrire un résultat. Les clés reprennent les noms du code
@@ -91,6 +97,15 @@ src/acceptance/
   En acceptance, un seul scénario de donnée invalide pour prouver le câblage.
 - Un seul contexte Cucumber par scénario (PicoContainer) ; le service et le DSL partagent les mêmes instances de faux.
 - Titres de scénarios : un résultat ou un refus avec sa cause (« Refus d'un nom de héros déjà utilisé »).
+- Un scénario écrit mais pas encore implémenté est tagué `@todo` ; le runner l'exclut (`not @todo`).
+
+## Règles du lobby (sujet + clarifications du client)
+- Un lobby accueille au maximum 4 joueurs (sujet).
+- Le créateur rejoint automatiquement le lobby et en est l'hôte (`host`).
+- Un joueur n'est que dans un seul lobby à la fois.
+- La partie est lançable avec au minimum 1 joueur (l'hôte), et seulement si tous les joueurs ont choisi leur héros.
+- Le lobby est fermé après le lancement de la partie : on ne peut plus le rejoindre.
+- Quand le créateur quitte le lobby, le lobby est fermé.
 
 ## Questions ouvertes (à confirmer avec le client)
 - Plancher des caractéristiques après une pénalité d'espèce (valeur finale de 2 possible).
@@ -98,14 +113,12 @@ src/acceptance/
 - XP au-delà du niveau 5 : plafonnée ou seulement le niveau ?
 - Que survit à la fin d'une partie (niveau, XP, inventaire) ?
 - Authentification : d'où vient `playerId` ?
-- Lobby : le créateur rejoint-il automatiquement et a-t-il un rôle ? Un joueur dans plusieurs lobbys ?
-  Qu'est-ce qui rend la partie lançable ? Minimum de joueurs ? Lobby fermé après le lancement ?
-  Que devient le lobby quand le créateur ou le dernier joueur part ?
 - Restrictions d'équipement : les « armes de mêlée » du Guerrier incluent-elles le bâton et la dague ?
 
 ## État d'avancement
 - Fait : contexte héros (création du profil : nominal, nom déjà utilisé, joueur inconnu, espèce inconnue).
 - Fait : contexte lobby (création du lobby : nominal avec événement `LobbyCreatedEvent`, joueur inconnu,
-  joueur déjà dans un lobby). Repose sur deux hypothèses non confirmées (questions ouvertes « Lobby ») :
-  le créateur devient `host` et premier joueur ; un joueur n'est que dans un seul lobby à la fois.
-- À faire : rejoindre, choisir un héros, lancer la partie, puis partie, rencontres, combat.
+  joueur déjà dans un lobby).
+- En cours (branche `feat/join_lobby`) : rejoindre un lobby. Fait : scénario nominal (événement
+  `PlayerJoinedLobbyEvent`). Les autres scénarios de `rejoindre_lobby.feature` sont écrits et tagués `@todo`.
+- À faire : choisir un héros, lancer la partie, puis partie, rencontres, combat.

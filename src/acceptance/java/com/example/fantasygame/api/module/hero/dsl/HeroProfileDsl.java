@@ -40,11 +40,32 @@ public class HeroProfileDsl {
         this.ctx = ctx;
     }
 
-    // --- Actions ---
+    // --- Givens ---
 
-    public void registerDefaultPlayer(){
+    public void registerDefaultPlayer() {
         ctx.getPlayerGateway().register(currentPlayer);
     }
+
+    public void unregisterDefaultPlayer() {
+        ctx.getPlayerGateway().unregister(currentPlayer);
+        ctx.getPlayerGateway().assertNoPlayerRegistered();
+    }
+
+    /** Goes through the repository, not the use case: no event is published. */
+    public void saveHeroProfileNamed(String name) {
+        ctx.getRepository().save(HeroProfile.create(
+                currentPlayer,
+                new Name(name),
+                Species.from(DEFAULT_INPUT.get("species")),
+                HeroClass.from(DEFAULT_INPUT.get("heroClass")),
+                Abilities.chosenFromNames(chosenAbilities(DEFAULT_ABILITIES))));
+    }
+
+    public void deleteAllHeroProfiles() {
+        ctx.getRepository().clear();
+    }
+
+    // --- Actions ---
 
     public void createHeroProfile(Map<String, String> input) {
         heroCountBeforeCreation = ctx.getRepository().count();
@@ -61,42 +82,19 @@ public class HeroProfileDsl {
         }
     }
 
-    public void attemptsToCreateProfileNamed(String name) {
+    public void createHeroProfileNamed(String name) {
         Map<String, String> input = new LinkedHashMap<>(DEFAULT_INPUT);
         input.put("name", name);
         createHeroProfile(input);
     }
 
-    public void attemptsToCreateProfileOfSpecies(String species) {
+    public void createHeroProfileOfSpecies(String species) {
         Map<String, String> input = new LinkedHashMap<>(DEFAULT_INPUT);
         input.put("species", species);
         createHeroProfile(input);
     }
 
-    // --- Givens ---
-
-    public void unregisterDefaultPlayer() {
-        ctx.getPlayerGateway().unregister(currentPlayer);
-        ctx.getPlayerGateway().assertNoPlayerRegistered();
-    }
-
-    /** Goes through the repository, not the use case: no event is published. */
-    public void saveHeroProfileWithName(String name) {
-        ctx.getRepository().save(HeroProfile.create(
-               currentPlayer,
-                new Name(name),
-                Species.from(DEFAULT_INPUT.get("species")),
-                HeroClass.from(DEFAULT_INPUT.get("heroClass")),
-                Abilities.chosenFromNames(chosenAbilities(DEFAULT_ABILITIES))));
-    }
-
     // --- Assertions ---
-
-    public void noHeroProfileExists() {
-        ctx.getRepository().clear();
-        ctx.getRepository().assertIsEmpty();
-        ctx.getBus().assertIsEmpty();
-    }
 
     public void assertProfileIsSavedWith(Map<String, String> expected) {
         Map<String, String> actual = snapshot(lastProfile());
@@ -112,7 +110,7 @@ public class HeroProfileDsl {
                 "A profile id was returned although the creation should have been refused.");
     }
 
-    public void assertProfileCreatedEventIsPublishedWithProfileId(String expectedType) {
+    public void assertEventIsPublishedWithProfileId(String expectedType) {
         var event = assertEventIsPublished(expectedType, HeroProfileCreatedIntegrationEvent.class);
 
         assertEquals(new HeroProfileCreatedIntegrationEvent.Payload(lastProfileId().value()),

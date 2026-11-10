@@ -3,6 +3,7 @@ package com.example.fantasygame.api.module.lobby.model;
 import com.example.fantasygame.api.module.lobby.model.valueobject.LobbyId;
 import com.example.fantasygame.api.module.lobby.model.valueobject.PlayerId;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
@@ -22,6 +23,14 @@ public final class Lobby {
     public static Lobby create(PlayerId host) {
         Objects.requireNonNull(host, "host is required");
         return new Lobby(LobbyId.generate(), host, List.of(host));
+    }
+
+    /** Returns the lobby with the player added after the players already present. */
+    public Lobby join(PlayerId player) {
+        Objects.requireNonNull(player, "player is required");
+        var joined = new ArrayList<>(players);
+        joined.add(player);
+        return new Lobby(id, host, joined);
     }
 
     public LobbyId id()             { return id; }

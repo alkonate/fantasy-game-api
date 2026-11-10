@@ -8,9 +8,9 @@ import com.example.fantasygame.api.module.lobby.model.valueobject.LobbyId;
 import com.example.fantasygame.api.module.lobby.model.valueobject.PlayerId;
 import com.example.fantasygame.api.shared.contracts.IntegrationEventBus;
 import com.example.fantasygame.api.shared.contracts.lobby.LobbyCreatedIntegrationEvent;
-import com.example.fantasygame.api.shared.contracts.lobby.LobbyCreatedIntegrationEvent.Payload;
+import com.example.fantasygame.api.shared.contracts.lobby.PlayerJoinedLobbyIntegrationEvent;
 
-public class LobbyService implements CreateLobbyUseCase {
+public class LobbyService implements CreateLobbyUseCase, JoinLobbyUseCase {
     private final LobbyRepository repository;
     private final IntegrationEventBus bus;
     private final PlayerGateway playerGateway;
@@ -29,15 +29,30 @@ public class LobbyService implements CreateLobbyUseCase {
             throw new PlayerNotFoundException("Player with id " + cmd.playerId() + " not found");
         }
 
-        // Hypothesis Q3 (open question): a player can only be in one lobby at a time
+        // Client clarification: a player can only be in one lobby at a time
         if (repository.existsWithPlayer(player)) {
             throw new PlayerAlreadyInLobbyException("Player with id " + cmd.playerId() + " is already in a lobby");
         }
 
         var lobbyId = repository.save(Lobby.create(player)).id();
 
-        bus.publish(new LobbyCreatedIntegrationEvent(new Payload(lobbyId.value())));
+        bus.publish(new LobbyCreatedIntegrationEvent(new LobbyCreatedIntegrationEvent.Payload(lobbyId.value())));
 
         return lobbyId;
+    }
+
+    @Override
+    public void join(JoinLobbyCommand cmd) {
+        var lobbyId = new LobbyId(cmd.lobbyId());
+        var player = new PlayerId(cmd.playerId());
+
+        // Only the nominal case for now: refusals (unknown player or lobby, full or closed lobby,
+        // player already in a lobby) come with the next scenarios of rejoindre_lobby.feature.
+        var lobby = repository.findById(lobbyId).orElseThrow();
+
+        repository.save(lobby.join(player));
+
+        bus.publish(new PlayerJoinedLobbyIntegrationEvent(
+                new PlayerJoinedLobbyIntegrationEvent.Payload(lobbyId.value())));
     }
 }

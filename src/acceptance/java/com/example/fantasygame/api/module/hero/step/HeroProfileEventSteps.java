@@ -5,18 +5,20 @@ import io.cucumber.java.en.And;
 import io.cucumber.java.en.Then;
 
 public class HeroProfileEventSteps {
-    HeroProfileDsl dsl;
-    public HeroProfileEventSteps(HeroProfileDsl dsl){
+
+    private final HeroProfileDsl dsl;
+
+    public HeroProfileEventSteps(HeroProfileDsl dsl) {
         this.dsl = dsl;
     }
 
     @Then("L'événement {string} est publié avec l'identité du profil")
-    public void VerifieEvenementPublie(String expectedEventType) {
-       dsl.assertProfileCreatedEventIsPublishedWithProfileId(expectedEventType);
+    public void evenementPublieAvecIdentiteDuProfil(String expectedEventType) {
+        dsl.assertEventIsPublishedWithProfileId(expectedEventType);
     }
 
     @And("Aucun événement n'est publié")
-    public void AffirmeAucunEventPublie() {
+    public void aucunEvenementPublie() {
         dsl.assertNoEventIsPublished();
     }
 }

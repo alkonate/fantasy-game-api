@@ -7,6 +7,7 @@ import com.example.fantasygame.api.module.lobby.model.valueobject.PlayerId;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Optional;
 
 public class InMemoryLobbyRepository implements LobbyRepository {
     protected final Map<LobbyId, Lobby> lobbies = new HashMap<>();
@@ -15,6 +16,11 @@ public class InMemoryLobbyRepository implements LobbyRepository {
     public Lobby save(Lobby lobby) {
         lobbies.put(lobby.id(), lobby);
         return lobby;
+    }
+
+    @Override
+    public Optional<Lobby> findById(LobbyId id) {
+        return Optional.ofNullable(lobbies.get(id));
     }
 
     @Override
