@@ -13,7 +13,7 @@ public class LobbyEventSteps {
 
     @And("L'événement {string} est publié avec l'identité du lobby")
     public void evenementPublieAvecIdentiteDuLobby(String expectedEventType) {
-        dsl.assertLobbyCreatedEventIsPublishedWithLobbyId(expectedEventType);
+        dsl.assertEventIsPublishedWithLobbyId(expectedEventType);
     }
 
     @And("Aucun événement n'est publié")

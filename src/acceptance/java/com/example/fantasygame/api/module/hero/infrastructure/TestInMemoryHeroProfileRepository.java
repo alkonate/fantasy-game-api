@@ -6,13 +6,8 @@ import com.example.fantasygame.api.module.hero.model.valueobject.HeroProfileId;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class TestInMemoryHeroProfileRepository extends InMemoryHeroProfileRepository {
-
-    public void assertIsEmpty() {
-        assertTrue(heroes.isEmpty(), "Heroes should be empty");
-    }
 
     public TestInMemoryHeroProfileRepository assertCount(int count) {
         assertEquals(count, heroes.size(), "heroes size should be equal to " + count);
