@@ -2,6 +2,7 @@ package com.example.fantasygame.api.module.lobby.application;
 
 import com.example.fantasygame.api.module.lobby.model.Lobby;
 import com.example.fantasygame.api.module.lobby.model.LobbyRepository;
+import com.example.fantasygame.api.module.lobby.model.exception.LobbyNotFoundException;
 import com.example.fantasygame.api.module.lobby.model.exception.PlayerAlreadyInLobbyException;
 import com.example.fantasygame.api.module.lobby.model.exception.PlayerNotFoundException;
 import com.example.fantasygame.api.module.lobby.model.valueobject.LobbyId;
@@ -46,11 +47,19 @@ public class LobbyService implements CreateLobbyUseCase, JoinLobbyUseCase {
         var lobbyId = new LobbyId(cmd.lobbyId());
         var player = new PlayerId(cmd.playerId());
 
-        // Only the nominal case for now: refusals (unknown player or lobby, full or closed lobby,
-        // player already in a lobby) come with the next scenarios of rejoindre_lobby.feature.
-        var lobby = repository.findById(lobbyId).orElseThrow();
+        if (!playerGateway.exists(player)) {
+            throw new PlayerNotFoundException("Player with id " + cmd.playerId() + " not found");
+        }
 
-        repository.save(lobby.join(player));
+        var lobby = repository.findById(lobbyId)
+                .orElseThrow(() -> new LobbyNotFoundException("Lobby with id " + cmd.lobbyId() + " not found"));
+
+        // Client clarification: a player can only be in one lobby at a time
+        if (repository.existsWithPlayer(player)) {
+            throw new PlayerAlreadyInLobbyException("Player with id " + cmd.playerId() + " is already in a lobby");
+        }
+
+        repository.save(lobby.join(player));   // the lobby refuses if it is full or closed
 
         bus.publish(new PlayerJoinedLobbyIntegrationEvent(
                 new PlayerJoinedLobbyIntegrationEvent.Payload(lobbyId.value())));

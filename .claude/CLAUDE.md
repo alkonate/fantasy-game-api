@@ -106,6 +106,17 @@ src/acceptance/
 - La partie est lançable avec au minimum 1 joueur (l'hôte), et seulement si tous les joueurs ont choisi leur héros.
 - Le lobby est fermé après le lancement de la partie : on ne peut plus le rejoindre.
 - Quand le créateur quitte le lobby, le lobby est fermé.
+- On ne peut rejoindre qu'un lobby ouvert (refus distincts pour verrouillé et fermé).
+
+## Lancer une partie : saga orchestrée (décision d'architecture)
+Le lancement traverse deux contextes (lobby, partie). Un orchestrateur enchaîne :
+1. le lobby vérifie ses règles (au moins l'hôte, tous les héros choisis) et passe à **verrouillé** :
+   plus personne ne peut rejoindre ni partir ;
+2. le contexte partie crée la partie avec les joueurs et leurs héros ;
+3. succès : le lobby passe à **fermé** ; échec : compensation, le lobby revient à **ouvert**.
+Il n'y a donc pas de scénario « le lobby se ferme quand la partie est lancée » : la fermeture est une étape
+de la saga, testée dans les scénarios de l'orchestrateur. `LobbyStatus` : `OPEN`, `LOCKED`, `CLOSED`.
+L'orchestrateur et les transitions (verrouiller, fermer, déverrouiller) viendront avec la story « lancer la partie ».
 
 ## Questions ouvertes (à confirmer avec le client)
 - Plancher des caractéristiques après une pénalité d'espèce (valeur finale de 2 possible).
@@ -113,12 +124,16 @@ src/acceptance/
 - XP au-delà du niveau 5 : plafonnée ou seulement le niveau ?
 - Que survit à la fin d'une partie (niveau, XP, inventaire) ?
 - Authentification : d'où vient `playerId` ?
+- Lancer une partie : qu'est-ce qui peut faire échouer la création de la partie (et donc déclencher la
+  compensation de la saga) ? Un héros supprimé entre-temps ?
 - Restrictions d'équipement : les « armes de mêlée » du Guerrier incluent-elles le bâton et la dague ?
 
 ## État d'avancement
 - Fait : contexte héros (création du profil : nominal, nom déjà utilisé, joueur inconnu, espèce inconnue).
 - Fait : contexte lobby (création du lobby : nominal avec événement `LobbyCreatedEvent`, joueur inconnu,
   joueur déjà dans un lobby).
-- En cours (branche `feat/join_lobby`) : rejoindre un lobby. Fait : scénario nominal (événement
-  `PlayerJoinedLobbyEvent`). Les autres scénarios de `rejoindre_lobby.feature` sont écrits et tagués `@todo`.
+- Fait (branche `feat/join_lobby`) : rejoindre un lobby (nominal avec événement `PlayerJoinedLobbyEvent`,
+  lobby plein, lobby verrouillé, lobby fermé, joueur inconnu, lobby inexistant, joueur déjà dans un lobby).
+  `Lobby` porte un `LobbyStatus` ; `Lobby.restore(...)` reconstruit un lobby stocké
+  sans vérifier de règle (utilisé par les Given). Le lancement de la partie n'existe pas encore.
 - À faire : choisir un héros, lancer la partie, puis partie, rencontres, combat.

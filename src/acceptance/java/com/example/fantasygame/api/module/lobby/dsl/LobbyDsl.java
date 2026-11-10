@@ -3,16 +3,23 @@ package com.example.fantasygame.api.module.lobby.dsl;
 import com.example.fantasygame.api.module.lobby.application.CreateLobbyCommand;
 import com.example.fantasygame.api.module.lobby.application.JoinLobbyCommand;
 import com.example.fantasygame.api.module.lobby.context.LobbyCucumberContext;
+import com.example.fantasygame.api.module.lobby.model.exception.LobbyClosedException;
+import com.example.fantasygame.api.module.lobby.model.exception.LobbyFullException;
+import com.example.fantasygame.api.module.lobby.model.exception.LobbyLockedException;
+import com.example.fantasygame.api.module.lobby.model.exception.LobbyNotFoundException;
 import com.example.fantasygame.api.module.lobby.model.exception.PlayerAlreadyInLobbyException;
 import com.example.fantasygame.api.module.lobby.model.exception.PlayerNotFoundException;
 import com.example.fantasygame.api.module.lobby.model.Lobby;
 import com.example.fantasygame.api.module.lobby.model.valueobject.LobbyId;
+import com.example.fantasygame.api.module.lobby.model.valueobject.LobbyStatus;
 import com.example.fantasygame.api.module.lobby.model.valueobject.PlayerId;
 import com.example.fantasygame.api.shared.contracts.IntegrationEvent;
 import com.example.fantasygame.api.shared.contracts.lobby.LobbyCreatedIntegrationEvent;
 import com.example.fantasygame.api.shared.contracts.lobby.PlayerJoinedLobbyIntegrationEvent;
 
+import java.util.Arrays;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -31,6 +38,7 @@ public class LobbyDsl {
     private final Map<String, PlayerId> namedPlayers = new LinkedHashMap<>();
     private int lobbyCountBeforeCreation;
     private LobbyId lobbyUnderTest;     // the lobby the scenario is about (created or given)
+    private Map<String, String> lobbyBeforeJoin;
 
     public LobbyDsl(LobbyCucumberContext ctx) {
         this.ctx = ctx;
@@ -59,6 +67,30 @@ public class LobbyDsl {
         lobbyUnderTest = lobby.id();
     }
 
+    /** An open lobby whose host does not matter. Goes through the repository: no rule, no event. */
+    public void saveLobby() {
+        saveLobby(LobbyStatus.OPEN, List.of(PlayerId.generate()));
+    }
+
+    /** "Alice, Bob, ..." : the first name is the host. */
+    public void saveLobbyWithPlayers(String names) {
+        var players = Arrays.stream(names.split(",\\s*")).map(this::namedPlayer).toList();
+        saveLobby(LobbyStatus.OPEN, players);
+    }
+
+    public void saveLockedLobby() {
+        saveLobby(LobbyStatus.LOCKED, List.of(PlayerId.generate()));
+    }
+
+    public void saveClosedLobby() {
+        saveLobby(LobbyStatus.CLOSED, List.of(PlayerId.generate()));
+    }
+
+    private void saveLobby(LobbyStatus status, List<PlayerId> players) {
+        var lobby = Lobby.restore(LobbyId.generate(), players.getFirst(), players, status);
+        lobbyUnderTest = ctx.getRepository().save(lobby).id();
+    }
+
     // --- Actions ---
 
     public void createLobby() {
@@ -74,6 +106,17 @@ public class LobbyDsl {
     }
 
     public void joinLobby() {
+        lobbyBeforeJoin = snapshot(lobbyUnderTestInRepository());
+        var cmd = new JoinLobbyCommand(lobbyUnderTest.value(), currentPlayer.value());
+        try {
+            ctx.getLobbyService().join(cmd);
+        } catch (Exception e) {
+            ctx.setCaughtException(e);
+        }
+    }
+
+    public void joinUnknownLobby() {
+        lobbyUnderTest = LobbyId.generate();                    // never saved
         var cmd = new JoinLobbyCommand(lobbyUnderTest.value(), currentPlayer.value());
         try {
             ctx.getLobbyService().join(cmd);
@@ -97,9 +140,13 @@ public class LobbyDsl {
 
     public void assertLobbyContains(Map<String, String> expected) {
         assertEquals(null, ctx.getCaughtException(), "Unexpected exception");
-        var lobby = ctx.getRepository().findById(lobbyUnderTest)
-                .orElseThrow(() -> new AssertionError("No lobby saved with id " + lobbyUnderTest));
-        assertSnapshotMatches(expected, snapshot(lobby));
+        assertSnapshotMatches(expected, snapshot(lobbyUnderTestInRepository()));
+    }
+
+    public void assertLobbyIsNotModified() {
+        assertEquals(lobbyBeforeJoin, snapshot(lobbyUnderTestInRepository()),
+                "The lobby was modified although the join should have been refused. Caught exception: "
+                        + ctx.getCaughtException());
     }
 
     public void assertLobbyIsNotCreated() {
@@ -126,6 +173,26 @@ public class LobbyDsl {
                 "Expected a PlayerAlreadyInLobbyException");
     }
 
+    public void assertLobbyFullErrorIsRaised() {
+        assertInstanceOf(LobbyFullException.class, ctx.getCaughtException(),
+                "Expected a LobbyFullException");
+    }
+
+    public void assertLobbyLockedErrorIsRaised() {
+        assertInstanceOf(LobbyLockedException.class, ctx.getCaughtException(),
+                "Expected a LobbyLockedException");
+    }
+
+    public void assertLobbyClosedErrorIsRaised() {
+        assertInstanceOf(LobbyClosedException.class, ctx.getCaughtException(),
+                "Expected a LobbyClosedException");
+    }
+
+    public void assertLobbyNotFoundErrorIsRaised() {
+        assertInstanceOf(LobbyNotFoundException.class, ctx.getCaughtException(),
+                "Expected a LobbyNotFoundException");
+    }
+
     public void assertNoEventIsPublished() {
         ctx.getBus().assertIsEmpty();
     }
@@ -137,6 +204,11 @@ public class LobbyDsl {
                 .orElseThrow(() -> new AssertionError(
                         "No lobby id in the context. Caught exception: " + ctx.getCaughtException(),
                         ctx.getCaughtException()));
+    }
+
+    private Lobby lobbyUnderTestInRepository() {
+        return ctx.getRepository().findById(lobbyUnderTest)
+                .orElseThrow(() -> new AssertionError("No lobby saved with id " + lobbyUnderTest));
     }
 
     private Lobby lastLobby() {
@@ -171,6 +243,7 @@ public class LobbyDsl {
         Map<String, String> m = new LinkedHashMap<>();
         m.put("host", nameOf(lobby.host()));
         m.put("players", lobby.players().stream().map(this::nameOf).collect(Collectors.joining(", ")));
+        m.put("status", lobby.status().name());
         return m;
     }
 
