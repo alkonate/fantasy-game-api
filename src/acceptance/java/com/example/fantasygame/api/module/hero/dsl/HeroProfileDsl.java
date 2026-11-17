@@ -5,7 +5,6 @@ import com.example.fantasygame.api.module.hero.application.CreateHeroProfileComm
 import com.example.fantasygame.api.module.hero.context.HeroProfileCucumberContext;
 import com.example.fantasygame.api.module.hero.model.Exception.HeroNameAlreadyExistsException;
 import com.example.fantasygame.api.module.hero.model.Exception.InvalidHeroSpeciesException;
-import com.example.fantasygame.api.module.hero.model.Exception.PlayerNotFoundException;
 import com.example.fantasygame.api.module.hero.model.HeroProfile;
 import com.example.fantasygame.api.module.hero.model.valueobject.*;
 import com.example.fantasygame.api.shared.contracts.IntegrationEvent;
@@ -41,15 +40,6 @@ public class HeroProfileDsl {
     }
 
     // --- Givens ---
-
-    public void registerDefaultPlayer() {
-        ctx.getPlayerGateway().register(currentPlayer);
-    }
-
-    public void unregisterDefaultPlayer() {
-        ctx.getPlayerGateway().unregister(currentPlayer);
-        ctx.getPlayerGateway().assertNoPlayerRegistered();
-    }
 
     /** Goes through the repository, not the use case: no event is published. */
     public void saveHeroProfileNamed(String name) {
@@ -120,11 +110,6 @@ public class HeroProfileDsl {
     public void assertNameUniquenessErrorIsRaised() {
         assertInstanceOf(HeroNameAlreadyExistsException.class, ctx.getCaughtException(),
                 "Expected a HeroNameAlreadyExistsException");
-    }
-
-    public void assertPlayerNotFoundErrorIsRaised() {
-        assertInstanceOf(PlayerNotFoundException.class, ctx.getCaughtException(),
-                "Expected a PlayerNotFoundException");
     }
 
     public void assertUnknownSpeciesErrorIsRaised() {

@@ -1,7 +1,6 @@
 package com.example.fantasygame.api.module.hero.application;
 
 import com.example.fantasygame.api.module.hero.model.Exception.HeroNameAlreadyExistsException;
-import com.example.fantasygame.api.module.hero.model.Exception.PlayerNotFoundException;
 import com.example.fantasygame.api.module.hero.model.HeroProfile;
 import com.example.fantasygame.api.module.hero.model.HeroRepository;
 import com.example.fantasygame.api.module.hero.model.valueobject.*;
@@ -13,21 +12,14 @@ import com.example.fantasygame.api.shared.contracts.hero.HeroProfileCreatedInteg
 public class HeroProfileService implements CreateHeroProfileUseCase {
     private final HeroRepository repository;
     private final IntegrationEventBus bus;
-    private final PlayerGateway playerGateway;
 
-    public HeroProfileService(HeroRepository heroRepo, IntegrationEventBus publisher, PlayerGateway playerGateway) {
+    public HeroProfileService(HeroRepository heroRepo, IntegrationEventBus publisher) {
         this.repository = heroRepo;
         this.bus = publisher;
-        this.playerGateway = playerGateway;
     }
 
     @Override
     public HeroProfileId create(CreateHeroProfileCommand cmd) {
-
-        if(!playerGateway.exists(new PlayerId(cmd.playerId()))){
-            throw new PlayerNotFoundException("Player with id " + cmd.playerId() + " not found");
-        }
-
         var profileExist = repository.findByName(new Name(cmd.name()));
         if (profileExist.isPresent()) {
             throw new HeroNameAlreadyExistsException("HeroProfile with name " + cmd.name() + " already exists");

@@ -8,7 +8,6 @@ import com.example.fantasygame.api.module.lobby.model.exception.LobbyFullExcepti
 import com.example.fantasygame.api.module.lobby.model.exception.LobbyLockedException;
 import com.example.fantasygame.api.module.lobby.model.exception.LobbyNotFoundException;
 import com.example.fantasygame.api.module.lobby.model.exception.PlayerAlreadyInLobbyException;
-import com.example.fantasygame.api.module.lobby.model.exception.PlayerNotFoundException;
 import com.example.fantasygame.api.module.lobby.model.Lobby;
 import com.example.fantasygame.api.module.lobby.model.valueobject.LobbyId;
 import com.example.fantasygame.api.module.lobby.model.valueobject.LobbyStatus;
@@ -46,15 +45,6 @@ public class LobbyDsl {
     }
 
     // --- Givens ---
-
-    public void registerDefaultPlayer() {
-        ctx.getPlayerGateway().register(currentPlayer);
-    }
-
-    public void unregisterDefaultPlayer() {
-        ctx.getPlayerGateway().unregister(currentPlayer);
-        ctx.getPlayerGateway().assertNoPlayerRegistered();
-    }
 
     /** Goes through the repository, not the use case: no event is published. */
     public void savePlayerInLobby() {
@@ -161,11 +151,6 @@ public class LobbyDsl {
         var event = assertEventIsPublished(expectedType);
 
         assertEquals(lobbyUnderTest.value(), lobbyIdOf(event), "Lobby id in the event payload");
-    }
-
-    public void assertPlayerNotFoundErrorIsRaised() {
-        assertInstanceOf(PlayerNotFoundException.class, ctx.getCaughtException(),
-                "Expected a PlayerNotFoundException");
     }
 
     public void assertPlayerAlreadyInLobbyErrorIsRaised() {

@@ -17,16 +17,6 @@ public class LobbySteps {
 
     // --- Given ---
 
-    @Given("Je suis enregistré comme joueur")
-    public void jeSuisEnregistreCommeJoueur() {
-        dsl.registerDefaultPlayer();
-    }
-
-    @Given("Je ne suis pas enregistré comme joueur")
-    public void jeNeSuisPasEnregistreCommeJoueur() {
-        dsl.unregisterDefaultPlayer();
-    }
-
     @And("Je suis déjà dans un lobby")
     public void jeSuisDejaDansUnLobby() {
         dsl.savePlayerInLobby();
@@ -94,11 +84,6 @@ public class LobbySteps {
     @Then("Le lobby n'est pas créé")
     public void leLobbyNEstPasCree() {
         dsl.assertLobbyIsNotCreated();
-    }
-
-    @And("Une erreur de joueur introuvable est levée")
-    public void uneErreurDeJoueurIntrouvableEstLevee() {
-        dsl.assertPlayerNotFoundErrorIsRaised();
     }
 
     @And("Une erreur de joueur déjà dans un lobby est levée")

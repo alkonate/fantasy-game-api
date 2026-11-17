@@ -5,8 +5,7 @@ Feature: Création du profil du héros
   Afin de l'incarner dans l'univers de jeu.
 
   Scenario: Création du profil d'un héros
-    Given Je suis enregistré comme joueur
-    And Aucun profil de héros n'existe encore
+    Given Aucun profil de héros n'existe encore
     When Je crée un profil de héros avec:
       | name      | Yal                                                                              |
       | species   | HUMAN                                                                            |
@@ -27,24 +26,14 @@ Feature: Création du profil du héros
     And L'événement "HeroProfileCreatedEvent" est publié avec l'identité du profil
 
   Scenario: Unicité du nom du héros
-    Given Je suis enregistré comme joueur
-    And Un profil de héros de nom "Yal" existe déjà
+    Given Un profil de héros de nom "Yal" existe déjà
     When Je crée un profil de héros de nom "Yal"
     Then Le profil n'est pas créé
     And Une erreur d'unicité est levée
     And Aucun événement n'est publié
 
-  Scenario: Refus de la création pour un joueur inconnu
-    Given Je ne suis pas enregistré comme joueur
-    And Aucun profil de héros n'existe encore
-    When Je crée un profil de héros de nom "Yal"
-    Then Le profil n'est pas créé
-    And Une erreur de joueur introuvable est levée
-    And Aucun événement n'est publié
-
   Scenario: Refus d'une espèce de héros inconnue
-    Given Je suis enregistré comme joueur
-    And Aucun profil de héros n'existe encore
+    Given Aucun profil de héros n'existe encore
     When Je crée un profil de héros d'espèce "DRAGON"
     Then Le profil n'est pas créé
     And Une erreur d'espèce inconnue est levée
