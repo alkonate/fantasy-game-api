@@ -12,25 +12,25 @@ public class HeroProfileSteps {
 
     private final HeroProfileDsl dsl;
 
-    public HeroProfileSteps(HeroProfileDsl heroes) {
-        this.dsl = heroes;
+    public HeroProfileSteps(HeroProfileDsl dsl) {
+        this.dsl = dsl;
     }
 
     // --- Given ---
 
     @Given("Je suis enregistré comme joueur")
-    public void JeSuisRegisterCommeJoueur() {
+    public void jeSuisEnregistreCommeJoueur() {
         dsl.registerDefaultPlayer();
     }
 
     @Given("Aucun profil de héros n'existe encore")
-    public void aucunProfilDeHeros() {
-        dsl.noHeroProfileExists();
+    public void aucunProfilDeHerosNExisteEncore() {
+        dsl.deleteAllHeroProfiles();
     }
 
     @Given("Un profil de héros de nom {string} existe déjà")
     public void unProfilDeHerosDeNomExisteDeja(String name) {
-        dsl.saveHeroProfileWithName(name);
+        dsl.saveHeroProfileNamed(name);
     }
 
     @Given("Je ne suis pas enregistré comme joueur")
@@ -47,12 +47,12 @@ public class HeroProfileSteps {
 
     @When("Je crée un profil de héros de nom {string}")
     public void jeCreeUnProfilDeNom(String name) {
-        dsl.attemptsToCreateProfileNamed(name);
+        dsl.createHeroProfileNamed(name);
     }
 
     @When("Je crée un profil de héros d'espèce {string}")
     public void jeCreeUnProfilDEspece(String species) {
-        dsl.attemptsToCreateProfileOfSpecies(species);
+        dsl.createHeroProfileOfSpecies(species);
     }
 
     // --- Then ---

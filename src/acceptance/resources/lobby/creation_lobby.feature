@@ -19,7 +19,7 @@ Feature: Création du lobby
     And Une erreur de joueur introuvable est levée
     And Aucun événement n'est publié
 
-  # Hypothèse Q3 : un joueur ne peut être que dans un seul lobby à la fois
+  # Client : un joueur ne peut être que dans un seul lobby à la fois
   Scenario: Refus de la création pour un joueur déjà dans un lobby
     Given Je suis enregistré comme joueur
     And Je suis déjà dans un lobby

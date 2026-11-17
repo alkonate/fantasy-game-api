@@ -1,0 +1,956 @@
+ ARCHITECTURE LOGICIELLE                                                                           PROJET DE SESSION · API RPG
+
+
+
+
+                                                             PROJET DE SESSION
+
+
+
+                                  API de jeu de rôle fantasy
+                                      au tour par tour
+                                                  Epic client • Architecture logicielle
+
+
+
+                                                         Cégep Marie-Victorin
+
+                                                 420-310-MV • Architecture logicielle
+
+
+                                            Concepteur de la situation : Charles Viau
+
+                                                  © Charles Viau — Tous droits réservés
+
+       La distribution, l’utilisation et le partage de ce document ne sont pas autorisés sans le consentement de l’auteur.
+
+
+
+
+      ÉPREUVE SYNTHÈSE                        PROJET LOGICIEL                        RÉFLEXION               ÉQUIPE
+
+
+              45 %                                  35 %                              10 %              5 personnes
+
+
+
+                                     Document de référence pour l’ensemble de la session
+
+
+
+
+© Charles Viau — Distribution, utilisation et partage interdits sans consentement.                                    420-310-MV
+ ARCHITECTURE LOGICIELLE                                                                         PROJET DE SESSION · API RPG
+
+
+
+1. Contexte du mandat
+Un studio souhaite développer un jeu de rôle fantasy au tour par tour inspiré des jeux de rôle sur table comme
+Dungeons & Dragons.
+Le moteur du jeu sera accessible à travers une API REST. Plusieurs interfaces pourraient éventuellement utiliser
+cette API : une application Web, une application mobile, des outils internes ou d’autres applications développées
+plus tard.
+
+Comme le jeu est au tour par tour, les actions des joueurs n’ont pas besoin d’être transmises en temps réel. Une
+faible latence entre une action et la réponse du serveur n’affecte pas significativement l’expérience de jeu.
+
+   Principe directeur
+   Le serveur constitue la source de vérité de la partie. Les règles du jeu doivent être respectées par le moteur lui-même
+   et non uniquement par l’interface utilisée par les joueurs.
+
+
+
+
+ Travail avec le client
+Le présent document décrit la vision actuelle du produit et les principales règles du jeu. Comme dans un
+véritable projet logiciel, certaines situations particulières, certains cas limites ou certaines décisions liées à
+l’expérience utilisateur ne sont pas nécessairement décrits explicitement.
+
+Il est attendu que l’équipe :
+
+  analyse le besoin et utilise le vocabulaire du domaine;
+  identifie les concepts importants et relève les ambiguïtés;
+  pose des questions au client lorsque nécessaire;
+  valide ses interprétations et propose des solutions lorsque plusieurs comportements semblent raisonnables;
+  adapte sa conception lorsque de nouvelles informations sont obtenues.
+   Important
+   Les clarifications données par le client pendant la session font partie du besoin.
+
+
+
+
+2. Joueurs, héros et lobby
+Les joueurs peuvent créer des héros avant de commencer une partie. Lorsqu’un joueur souhaite participer à une
+aventure, il peut rejoindre un lobby.
+Un lobby peut accueillir un maximum de quatre joueurs. Dans le lobby, chaque joueur peut sélectionner un
+héros qu’il a préalablement créé.
+
+Lorsque les joueurs sont prêts, la partie peut être lancée. Une fois la partie commencée, les héros sélectionnés
+constituent le groupe qui participera à l’aventure.
+
+Le groupe pourra ensuite explorer, participer à des rencontres, combattre des créatures, obtenir de
+l’équipement, recevoir de l’expérience, monter de niveau et se reposer entre les combats.
+
+  Une partie ne peut jamais avoir plus d’un combat actif simultanément.
+  Si tous les héros du groupe sont vaincus, la partie prend fin.
+  L’état d’une partie doit pouvoir être retrouvé entre plusieurs appels à l’API.
+
+
+© Charles Viau — Distribution, utilisation et partage interdits sans consentement.                                 420-310-MV
+ ARCHITECTURE LOGICIELLE                                                                    PROJET DE SESSION · API RPG
+
+
+
+3. Création d’un héros
+Un joueur peut créer un héros. Lors de sa création, il choisit notamment son nom, son espèce, sa classe et ses
+six caractéristiques. Ces choix déterminent ensuite une partie de ses statistiques, de son équipement et de ses
+capacités.
+Tous les nouveaux héros commencent :
+
+  au niveau 1;
+  avec 0 point d’expérience;
+  avec tous leurs points de vie;
+  avec tous leurs points de magie lorsqu’ils utilisent la magie.
+Un héros conserve son état entre les combats. Ainsi, un héros qui termine un combat blessé ne retrouve pas
+automatiquement tous ses points de vie avant le combat suivant.
+
+ Nom du héros
+Chaque héros possède un nom. Le nom :
+
+  contient entre 2 et 30 caractères;
+  contient uniquement des lettres et des espaces;
+  ne commence pas et ne se termine pas par un espace;
+  est unique dans tout le système.
+     Valides                                                                 Invalides
+
+     Aria                                                                    Mage123
+
+     Thorin                                                                  Thorin!
+
+     Eldrin                                                                  _Gandalf_
+
+     Jean Pierre                                                             Player#42
+
+
+
+
+ Caractéristiques
+Chaque héros possède les six caractéristiques classiques suivantes : Force, Dextérité, Constitution, Intelligence,
+Sagesse et Charisme.
+
+Lors de la création d’un héros, le joueur attribue une valeur comprise entre 3 et 18 à chacune. Les bonus ou
+pénalités liés à l’espèce sont appliqués ensuite. Une caractéristique ne peut jamais dépasser 20.
+
+Modificateurs de caractéristiques
+Les règles du jeu utilisent souvent le modificateur d’une caractéristique plutôt que sa valeur directement.
+                                       (valeur - 10) / 2 — résultat arrondi vers le bas
+
+            Valeur                                                           Modificateur
+
+            3                                                                -4
+
+            4-5                                                              -3
+
+            6-7                                                              -2
+
+            8-9                                                              -1
+
+
+© Charles Viau — Distribution, utilisation et partage interdits sans consentement.                           420-310-MV
+ ARCHITECTURE LOGICIELLE                                                                                 PROJET DE SESSION · API RPG
+
+
+            Valeur                                                           Modificateur
+
+            10-11                                                            0
+
+            12-13                                                            +1
+
+            14-15                                                            +2
+
+            16-17                                                            +3
+
+            18-19                                                            +4
+
+            20                                                               +5
+
+
+Ces modificateurs interviennent notamment dans les attaques, les dégâts, l’initiative, la défense, les points de
+vie et certains sorts.
+
+
+4. Espèces
+La première version du jeu propose les espèces suivantes : Humain, Elfe, Nain et Orc.
+
+     Espèce                        Bonus / pénalités
+
+     Humain                        +1 Force, +1 Dextérité, +1 Constitution, +1 Intelligence, +1 Sagesse, +1 Charisme
+
+     Elfe                          +2 Dextérité, +1 Intelligence
+
+     Nain                          +2 Constitution, +1 Force
+
+     Orc                           +2 Force, +1 Constitution, -1 Intelligence
+
+
+Le studio prévoit ajouter de nouvelles espèces dans de futures versions.
+
+
+5. Classes
+La première version propose quatre classes : Guerrier, Rôdeur, Mage et Clerc. La classe influence les points de
+vie, les points de magie, l’équipement initial, les catégories d’équipement utilisables, les capacités disponibles et
+certaines règles de combat.
+
+                                                                                                             Aptitude
+    Classe                    PV base          Magie            Équipement initial
+                                                                                                             dominante
+
+    Guerrier                  12               0                Épée longue, armure de mailles               Force
+
+    Rôdeur                    10               0                Arc, armure de cuir                          Dextérité
+
+    Mage                      6                10               Bâton, aucune armure                         Intelligence
+
+    Clerc                     10               8                Masse, armure de mailles                     Sagesse
+
+
+
+
+© Charles Viau — Distribution, utilisation et partage interdits sans consentement.                                          420-310-MV
+ ARCHITECTURE LOGICIELLE                                                                                  PROJET DE SESSION · API RPG
+
+
+ Restrictions d’équipement par classe
+     Classe                         Peut utiliser
+
+     Guerrier                       Armes de mêlée; armures légères et lourdes
+
+     Rôdeur                         Arcs, dagues, épées; armures légères
+
+     Mage                           Bâtons, dagues; aucune armure dans la première version
+
+     Clerc                          Masses, bâtons; armures légères et lourdes
+
+
+
+
+6. Points de vie et magie
+
+ Points de vie
+Un héros possède des points de vie actuels et des points de vie maximum.
+            PV maximum au niveau 1 = PV de base de la classe + modificateur de Constitution
+
+Le maximum obtenu ne peut jamais être inférieur à 1. Lors de sa création, les PV actuels du héros sont égaux à
+son maximum.
+
+  Les PV actuels ne peuvent jamais être négatifs.
+  Les PV actuels ne peuvent jamais dépasser le maximum.
+  À 0 PV, le héros est hors combat et ne peut plus effectuer d’action.
+  Un héros hors combat peut recevoir des soins; à partir de 1 PV, il peut de nouveau agir.
+   Exemple
+   Un Guerrier possède 12 PV de base. Avec 16 en Constitution, son modificateur vaut +3. Il possède donc 15 PV
+   maximum au niveau 1.
+
+
+
+
+ Points de magie
+Le Mage et le Clerc utilisent des points de magie pour lancer leurs sorts.
+
+           Classe                                                                    Magie maximale au niveau 1
+
+           Guerrier                                                                  0
+
+           Rôdeur                                                                    0
+
+           Mage                                                                      10
+
+           Clerc                                                                     8
+
+
+
+  Les points de magie sont consommés lorsqu’un sort est lancé.
+  Ils ne peuvent jamais devenir négatifs ni dépasser leur maximum.
+  Un sort ne peut pas être lancé si le héros ne possède pas suffisamment de magie.
+
+
+
+
+© Charles Viau — Distribution, utilisation et partage interdits sans consentement.                                         420-310-MV
+ ARCHITECTURE LOGICIELLE                                                                                PROJET DE SESSION · API RPG
+
+
+
+7. Inventaire et équipement
+
+ Inventaire
+Chaque héros possède son propre inventaire. Il peut notamment contenir des armes, des armures, des potions
+et d’autres objets ajoutés ultérieurement.
+
+  Capacité maximale : 10 objets.
+  Chaque exemplaire compte comme un objet.
+  Un héros doit posséder un objet avant de pouvoir l’utiliser ou l’équiper.
+  Un nouvel objet ne peut pas être ajouté si l’inventaire est plein.
+
+ Armes
+     Arme                                                 Dégâts                      Caractéristique
+
+     Épée longue                                          1d8                         Force
+
+     Hache                                                1d10                        Force
+
+     Masse                                                1d6                         Force
+
+     Dague                                                1d4                         Dextérité
+
+     Arc                                                  1d8                         Dextérité
+
+     Bâton                                                1d6                         Force
+
+
+Un héros ne peut utiliser qu’une arme principale à la fois. Pour équiper une arme, il doit la posséder et sa classe
+doit lui permettre de l’utiliser. Changer d’arme hors combat est libre; en combat, cela consomme l’action
+principale.
+
+ Armures
+     Protection                                             Classe d’armure
+
+     Sans armure                                            10 + modificateur de Dextérité
+
+     Armure de cuir                                         11 + modificateur de Dextérité
+
+     Armure de mailles                                      16 (sans bonus de Dextérité)
+
+
+Un héros ne peut porter qu’une armure principale à la fois. Il doit la posséder et sa classe doit lui permettre de la
+porter.
+
+ Potion de soin
+                                                              Soin = 2d4 + 2 PV
+Le soin ne peut jamais dépasser les PV maximum. La potion disparaît de l’inventaire après utilisation. En
+combat, utiliser une potion consomme l’action principale du héros.
+
+
+
+
+© Charles Viau — Distribution, utilisation et partage interdits sans consentement.                                       420-310-MV
+ ARCHITECTURE LOGICIELLE                                                                    PROJET DE SESSION · API RPG
+
+
+
+8. Exploration et rencontres
+Une fois la partie commencée, le groupe peut progresser dans son aventure. Pour cette première version,
+l’exploration n’a pas besoin d’être représentée par une carte ou un système de déplacement. Le groupe accède
+plutôt à différentes rencontres disponibles.
+Une rencontre représente un ensemble de créatures que le groupe doit affronter. Une rencontre déjà remportée
+ne peut pas être recommencée dans la même partie.
+
+     Rencontre                                                   Composition
+
+     Patrouille gobeline                                         3 Gobelins
+
+     Campement orc                                               2 Orcs et 1 Gobelin
+
+     Antre du Troll                                              1 Troll
+
+
+
+
+9. Créatures
+Les créatures représentent les ennemis contrôlés par le moteur. Elles possèdent les informations nécessaires
+au combat, mais ne suivent pas nécessairement toutes les mêmes règles que les héros.
+Une créature n’a par exemple pas nécessairement de classe de héros, de niveau, d’expérience, d’inventaire,
+d’équipement interchangeable ou des six caractéristiques des héros.
+
+ Gobelin
+     Statistique                                      Valeur
+
+     PV                                               7
+
+     CA                                               12
+
+     Initiative                                       +2
+
+     XP                                               50
+
+     Attaque                                          Dague rouillée : +3, dégâts 1d6 + 1
+
+
+Comportement : le Gobelin attaque en priorité le héros encore actif possédant le moins de points de vie actuels.
+
+ Orc
+     Statistique                                      Valeur
+
+     PV                                               15
+
+     CA                                               13
+
+     Initiative                                       +1
+
+     XP                                               100
+
+     Attaque                                          Hache : +4, dégâts 1d8 + 2
+
+
+
+© Charles Viau — Distribution, utilisation et partage interdits sans consentement.                           420-310-MV
+ ARCHITECTURE LOGICIELLE                                                                   PROJET DE SESSION · API RPG
+
+
+
+
+Comportement : l’Orc attaque en priorité le héros encore actif possédant le plus de points de vie actuels.
+
+ Troll
+     Statistique                                      Valeur
+
+     PV                                               35
+
+     CA                                               15
+
+     Initiative                                       0
+
+     XP                                               300
+
+     Attaque                                          Massue : +6, dégâts 2d6 + 3
+
+
+Comportement : le Troll choisit aléatoirement un héros parmi ceux qui sont encore capables de combattre.
+
+
+10. Combat au tour par tour
+Lorsqu’une rencontre commence, les héros et les créatures participent à un combat. Les participants
+appartiennent à deux camps : les héros et les créatures.
+Les participants sont déterminés avant le début du combat. Une fois le combat commencé, aucun participant ne
+peut être ajouté manuellement. Le combat se déroule en rounds jusqu’à ce qu’un des deux camps ne soit plus
+en mesure de combattre.
+
+ Initiative
+                                              Héros : 1d20 + modificateur de Dextérité
+                                                  Créature : 1d20 + bonus d’initiative
+Les participants sont classés du résultat le plus élevé au plus faible. Cet ordre est utilisé pendant tout le combat.
+
+ Rounds et tours
+Le premier round est le round 1. Chaque participant encore capable de combattre joue normalement une fois
+pendant le round.
+
+   Exemple d’ordre
+   1. Eldrin • 2. Gobelin A • 3. Thorin • 4. Orc • 5. Gobelin B
+   Lorsque Gobelin B termine son tour, le round suivant recommence avec Eldrin.
+
+
+Les participants hors combat sont ignorés. Le moteur doit toujours pouvoir déterminer le round actuel, l’ordre
+d’initiative et le participant dont c’est le tour.
+
+ Action principale
+Pendant son tour, un héros possède normalement une action principale. Il peut l’utiliser pour attaquer, lancer un
+sort, utiliser une potion, changer d’arme ou se défendre. Une fois cette action utilisée, il ne peut pas en effectuer
+une deuxième pendant le même tour.
+
+
+
+© Charles Viau — Distribution, utilisation et partage interdits sans consentement.                          420-310-MV
+ ARCHITECTURE LOGICIELLE                                                                     PROJET DE SESSION · API RPG
+
+
+
+11. Attaques et dégâts
+
+ Attaque
+Pour attaquer, un participant sélectionne une cible ennemie encore capable de combattre.
+
+     Jet d’attaque d’un héros = 1d20 + modificateur de la caractéristique de l’arme + bonus de maîtrise
+Au niveau 1, le bonus de maîtrise est +2. Le résultat est comparé à la classe d’armure de la cible; s’il est
+supérieur ou égal à la CA, l’attaque touche.
+
+   Exemple
+   Un Guerrier possède 16 en Force, donc un modificateur de +3. Avec son épée longue au niveau 1, son jet d’attaque
+   est 1d20 + 3 + 2.
+
+
+
+
+ Échec critique
+Un résultat naturel de 1 au d20 rate automatiquement. Les différents bonus ne peuvent pas transformer ce
+résultat en réussite.
+
+ Coup critique
+Un résultat naturel de 20 touche automatiquement et représente un coup critique. Le nombre de dés utilisés
+pour calculer les dégâts est doublé; le bonus fixe ne l’est pas.
+
+                                                            1d8 + 3 → 2d8 + 3
+
+
+ Dégâts
+Lorsqu’une attaque touche, la cible subit des dégâts. Pour un héros, le modificateur de la caractéristique
+associée à son arme est ajouté aux dégâts. Les créatures utilisent directement les valeurs indiquées dans leur
+définition.
+
+                                    Exemple : épée longue avec +3 Force = 1d8 + 3 dégâts
+Les dégâts retirent des points de vie. Les PV d’une cible ne peuvent jamais devenir négatifs.
+
+ Se défendre
+Un héros peut utiliser son action principale pour se défendre. Il reçoit +2 CA jusqu’au début de son prochain
+tour. Le bonus disparaît automatiquement à ce moment.
+
+
+12. Sorts
+Certaines classes peuvent lancer des sorts. Un sort possède notamment un coût en magie, une façon de
+sélectionner les cibles et un effet. Les futurs sorts pourront viser un ou plusieurs ennemis, un ou plusieurs alliés
+ou le lanceur lui-même; leurs effets pourront infliger des dégâts, soigner, appliquer des bonus, des pénalités ou
+d’autres effets.
+
+Sort                           Classe           Coût           Cible(s)              Effet
+
+
+
+
+© Charles Viau — Distribution, utilisation et partage interdits sans consentement.                            420-310-MV
+ ARCHITECTURE LOGICIELLE                                                                                     PROJET DE SESSION · API RPG
+
+
+Sort                           Classe           Coût           Cible(s)                    Effet
+
+                               Mage             2              Un ennemi                   1d6 + mod. Intelligence; touche
+Projectile magique
+                                                                                           automatiquement
+
+                               Mage             4              Toutes les créatures        2d6 + mod. Intelligence à chaque cible; coût
+Boule de feu
+                                                               ennemies                    payé une fois
+
+                               Clerc            3              Clerc ou un autre héros     1d8 + mod. Sagesse PV; peut cibler un héros
+Soin
+                                                                                           à 0 PV
+
+                               Clerc            4              Tous les héros encore       +1 CA jusqu’à la fin du prochain tour de
+Bénédiction
+                                                               présents                    chaque héros
+
+
+
+
+13. Effets temporaires et dés
+
+ Effets temporaires
+       Effet                                 Règle
+
+                                             Subit 1d4 dégâts au début de chacun de ses tours; le poison possède une durée en
+       Empoisonné
+                                             tours.
+
+                                             Ne peut pas effectuer d’action pendant son prochain tour; le tour est passé puis l’effet
+       Étourdi
+                                             disparaît.
+
+                                             Augmente temporairement la CA. Se défendre applique +2 CA; Bénédiction applique
+       Défense renforcée
+                                             +1 CA.
+
+
+Le studio prévoit ajouter d’autres effets dans de futures versions.
+
+ Dés
+Le jeu utilise des d4, d6, d8, d10 et d20. La notation 2d6 + 3 signifie : lancer deux dés à six faces, additionner
+leurs résultats, puis ajouter 3.
+
+Dans une partie normale, les résultats sont aléatoires. L’équipe doit toutefois être capable de vérifier
+automatiquement des situations dont le résultat est connu à l’avance, notamment un d20 donnant 1 ou 20, une
+initiative connue, une valeur de dégâts précise ou une valeur de soin précise.
+
+
+14. Comportement des créatures
+Lorsque vient le tour d’une créature, le moteur détermine automatiquement son action. Toutes les créatures ne
+prennent pas leurs décisions de la même façon.
+Le studio souhaite éventuellement pouvoir ajouter des comportements plus complexes, par exemple :
+
+  changer de comportement lorsque la créature est blessée;
+  utiliser une capacité spéciale;
+  protéger ou soigner une autre créature;
+  privilégier certains types de héros.
+
+
+
+
+© Charles Viau — Distribution, utilisation et partage interdits sans consentement.                                              420-310-MV
+ ARCHITECTURE LOGICIELLE                                                                            PROJET DE SESSION · API RPG
+
+
+
+15. Fin du combat, expérience et progression
+
+ Fin du combat
+Après toute action susceptible de mettre un participant hors combat, le moteur doit vérifier si le combat est
+terminé.
+
+  Les héros remportent le combat lorsque toutes les créatures possèdent 0 PV.
+  Les créatures gagnent lorsque tous les héros possèdent 0 PV.
+  Une fois le combat terminé, aucune nouvelle action de combat ne peut être effectuée et aucun nouveau round ne
+   commence.
+  Le résultat du combat est conservé.
+
+ Expérience
+           Créature                                                                    Expérience
+
+           Gobelin                                                                     50 XP
+
+           Orc                                                                         100 XP
+
+           Troll                                                                       300 XP
+
+
+Lorsqu’un groupe remporte un combat, l’expérience totale est distribuée également aux héros ayant participé.
+Seule la partie entière de la division est conservée.
+
+                                                    100 XP / 3 héros = 33 XP chacun
+
+ Niveaux
+           Niveau                                                                XP total requis
+
+           1                                                                     0
+
+           2                                                                     300
+
+           3                                                                     900
+
+           4                                                                     2700
+
+           5                                                                     6500
+
+
+La première version permet de progresser jusqu’au niveau 5. Lorsqu’un héros gagne un niveau, ses PV
+maximum augmentent de :
+
+                               PV de base de la classe / 2 + modificateur de Constitution
+
+L’augmentation minimale est toujours de 1 PV. D’autres avantages pourront être associés aux niveaux dans de
+futures versions.
+
+ Récompenses
+Une rencontre remportée peut également fournir des potions, des armes ou des armures. Les joueurs peuvent
+attribuer les objets obtenus aux héros de leur groupe; l’objet est alors ajouté à l’inventaire du héros concerné.
+
+
+
+© Charles Viau — Distribution, utilisation et partage interdits sans consentement.                                   420-310-MV
+ ARCHITECTURE LOGICIELLE                                                                    PROJET DE SESSION · API RPG
+
+
+ Repos
+Entre les combats, le groupe peut effectuer un repos. Un repos restaure tous les PV des héros, restaure tous
+leurs points de magie et retire les effets temporaires. Il ne peut pas être effectué pendant un combat.
+
+
+16. Journal des événements
+Le studio souhaite conserver un historique lisible des événements importants d’une partie.
+
+   Exemple de journal
+   Le combat commence.
+   Eldrin obtient une initiative de 17.
+   Thorin attaque l’Orc avec son épée longue.
+   Thorin obtient 19 contre une CA de 13.
+   L’attaque touche.
+   L’Orc subit 8 dégâts.
+   Eldrin lance Boule de feu.
+   Gobelin A est hors combat.
+   Les héros remportent la rencontre.
+
+
+Le journal pourra notamment être utilisé par les interfaces du jeu, pour le débogage, pour produire des
+statistiques ou par de futures fonctionnalités.
+
+
+17. Bestiaire et sauvegarde
+
+ Bestiaire
+Les concepteurs du jeu possèdent un catalogue décrivant les différentes créatures. Le moteur utilise ces
+définitions pour créer les créatures nécessaires aux rencontres.
+Dans une première version, le catalogue peut être conservé directement avec l’application. Le studio souhaite
+toutefois pouvoir éventuellement obtenir les mêmes informations depuis un fichier JSON, une base de données
+ou un service externe.
+
+   Exigence
+   Le fonctionnement du combat ne doit pas changer selon la provenance des données du bestiaire.
+
+
+
+
+ Stockage des données
+Les données de l’application doivent être conservées entre les différents appels à l’API tant que le serveur est
+en cours d’exécution. Le système doit notamment pouvoir retrouver les joueurs, les héros, les lobbys, les parties,
+l’état et la progression des héros, leur équipement et leur inventaire, les rencontres terminées ainsi que le
+combat actuel lorsqu’il existe.
+
+Pour cette version du projet, le stockage des données sera réalisé entièrement en mémoire. Aucune base de
+données externe et aucune persistance des données après le redémarrage de l’application ne sont demandées.
+
+
+
+
+© Charles Viau — Distribution, utilisation et partage interdits sans consentement.                           420-310-MV
+ ARCHITECTURE LOGICIELLE                                                                       PROJET DE SESSION · API RPG
+
+
+
+18. Utilisation de l’API
+À terme, une application cliente doit notamment pouvoir :
+
+  créer un joueur, créer un héros et consulter les héros d’un joueur;
+  créer, rejoindre et quitter un lobby;
+  sélectionner un héros dans un lobby et lancer une partie;
+  consulter l’état d’une partie et d’un héros;
+  consulter l’inventaire et modifier l’équipement;
+  consulter les rencontres disponibles et commencer une rencontre;
+  consulter un combat, l’ordre d’initiative et le participant actif;
+  attaquer, lancer un sort, utiliser une potion, changer d’arme, se défendre et terminer son tour;
+  récupérer des récompenses, effectuer un repos et consulter le journal des événements.
+La structure exacte des URI, les méthodes HTTP utilisées et les représentations JSON seront définies pendant
+le développement.
+
+ Actions et état du jeu
+Le studio souhaite que l’API exprime principalement les actions du jeu plutôt que de permettre aux applications
+clientes de modifier directement son état interne.
+
+       « Thorin attaque l’Orc. »
+Le moteur détermine ensuite si Thorin participe au combat, si c’est son tour, s’il peut agir, si l’Orc est une cible
+valide, le résultat du jet, les dégâts et les conséquences sur le combat.
+
+       « Les points de vie de l’Orc valent maintenant 4. »
+Une application cliente ne doit pas pouvoir remplacer une action du domaine par une modification directe de
+l’état. Le même principe s’applique aux soins, sorts, objets, équipements, tours et à la progression du combat.
+
+ Gestion des erreurs
+Lorsqu’une action ne peut pas être effectuée, l’API doit fournir une réponse permettant à l’application cliente de
+comprendre le problème, sans exposer les détails techniques internes du serveur.
+
+Exemples : joueur ou héros introuvable, nom invalide ou déjà utilisé, lobby plein, objet absent, inventaire plein,
+équipement incompatible, magie insuffisante, sort non disponible, mauvais tour, cible invalide, héros hors
+combat, combat terminé ou action interdite dans l’état actuel du jeu.
+
+
+19. Évolution du produit
+Le studio prévoit continuer à développer le jeu après cette première version. De futures versions pourront
+notamment ajouter de nouvelles espèces, classes, armes, armures, objets, sorts, façons de cibler, effets,
+créatures, comportements, rencontres, sources de données et interfaces clientes.
+
+   Objectif d’évolution
+   Le studio souhaite éviter qu’une nouvelle fonctionnalité exige systématiquement une réécriture importante des
+   fonctionnalités existantes.
+
+
+
+
+© Charles Viau — Distribution, utilisation et partage interdits sans consentement.                                 420-310-MV
+ ARCHITECTURE LOGICIELLE                                                                    PROJET DE SESSION · API RPG
+
+
+
+20. Trois User Stories originales
+À la fin du projet, chaque équipe devra proposer et développer trois User Stories originales permettant de faire
+évoluer le jeu au-delà des fonctionnalités décrites dans cet Epic.
+
+   Charge prévue
+   Les trois Stories représentent ensemble environ 9 heures de travail hors classe.
+
+
+Les fonctionnalités proposées doivent représenter de véritables évolutions du domaine. Elles ne doivent pas être
+uniquement cosmétiques ou simplement ajouter des données sans introduire de nouveau comportement.
+
+Dans l’ensemble, les trois Stories doivent :
+
+  introduire de nouvelles règles ou de nouveaux comportements;
+  interagir avec des fonctionnalités déjà présentes;
+  être accessibles à travers l’API lorsque pertinent;
+  respecter les règles existantes;
+  s’intégrer à l’architecture déjà développée;
+  être accompagnées de critères d’acceptation.
+Les trois Stories ne doivent pas nécessairement avoir la même ampleur. Une équipe peut développer une Story
+plus importante accompagnée de deux évolutions plus petites.
+
+ Exemples de directions possibles
+  nouvelle classe ou nouvelle espèce avec des règles particulières;
+  nouvelle mécanique de sort;
+  boss possédant plusieurs phases;
+  résistances et vulnérabilités;
+  mécanique de bouclier;
+  fuite d’un combat ou résurrection;
+  familiers ou effets environnementaux;
+  nouvelle catégorie d’équipement;
+  nouvelle créature ou nouveau comportement;
+  nouvelle forme de rencontre ou mécanique de récompense.
+Avant leur développement, les trois Stories doivent être présentées au client. Pour chacune, l’équipe doit
+préciser le besoin utilisateur, les principales règles métier, les interactions avec les fonctionnalités existantes et
+les critères d’acceptation.
+
+Les Stories pourront être précisées ou ajustées à la suite des discussions avec le client.
+
+
+21. Organisation du travail
+
+   Équipes
+   Le projet est réalisé en équipes de cinq personnes.
+
+
+Il s’agit d’un projet d’équipe : les membres doivent collaborer sur l’ensemble du système et non simplement
+diviser le projet en cinq parties complètement indépendantes.
+
+
+
+
+© Charles Viau — Distribution, utilisation et partage interdits sans consentement.                           420-310-MV
+ ARCHITECTURE LOGICIELLE                                                                        PROJET DE SESSION · API RPG
+
+
+Il est possible de se répartir temporairement certaines fonctionnalités ou certaines tâches, mais aucun membre
+ne devient le propriétaire exclusif d’une partie du code.
+
+À la fin du projet, chaque membre doit être capable d’expliquer :
+
+  l’organisation générale de l’application;
+  les principales décisions architecturales;
+  les principaux concepts du domaine;
+  la façon dont les différentes parties du système collaborent.
+
+ Méthode de travail
+Le projet doit être développé de manière collaborative à l’aide de Git.
+
+  Utiliser des branches de courte durée.
+  Effectuer les changements à l’aide de Pull Requests.
+  Obtenir au moins une approbation d’un autre membre avant d’intégrer une Pull Request.
+  Effectuer des revues de code.
+  Éviter qu’une seule personne travaille systématiquement sur la même partie du système.
+  Discuter en équipe des décisions architecturales importantes.
+  Maintenir une base de code fonctionnelle au fur et à mesure du développement.
+  Être capable d’expliquer les changements apportés au projet.
+   À éviter
+   « Une personne fait toute l’API, une autre toute la base de données et une autre tout le domaine pendant toute la
+   session. » Les membres doivent être exposés aux différentes parties du projet et collaborer sur la solution.
+
+
+
+
+Utilisation de l’intelligence artificielle
+L’utilisation d’outils d’intelligence artificielle est permise dans le cadre du projet. Ces outils peuvent être
+utilisés comme aide au développement, au même titre que la documentation, les moteurs de recherche ou
+d’autres ressources techniques.
+L’intelligence artificielle peut notamment être utilisée pour :
+
+  clarifier un concept ou une notion technique;
+  proposer des pistes de conception ou de refactorisation;
+  aider à comprendre une erreur ou à déboguer un problème;
+  générer ou compléter du code, des tests ou de la documentation;
+  explorer différentes solutions possibles avant de prendre une décision.
+L’utilisation de l’IA ne transfère toutefois pas la responsabilité du travail à l’outil. L’équipe demeure
+entièrement responsable du code remis, de son fonctionnement, de sa qualité et des décisions prises.
+Tout membre de l’équipe doit être capable de comprendre et d’expliquer le code intégré au projet, y
+compris lorsqu’il a été produit ou suggéré avec l’aide d’une IA. Du code généré ne doit pas être intégré
+sans avoir été lu, validé et adapté au besoin du projet.
+L’IA ne remplace pas non plus les échanges avec le client. Lorsqu’une règle du domaine ou un besoin est
+ambigu, l’équipe doit obtenir une clarification du client plutôt que d’inventer une règle à partir d’une réponse
+générée.
+
+
+
+
+© Charles Viau — Distribution, utilisation et partage interdits sans consentement.                                420-310-MV
+ ARCHITECTURE LOGICIELLE                                                                 PROJET DE SESSION · API RPG
+
+
+L’enseignant peut demander à un étudiant d’expliquer une portion du projet ou une décision de conception.
+Une incapacité à expliquer de façon satisfaisante le travail remis peut être prise en compte lors de
+l’ajustement individuel de la note d’équipe.
+
+
+ 22. Épreuve synthèse — 45 %
+Ce projet constitue l’épreuve synthèse du cours et représente au total 45 % de la note finale.
+
+     Évaluation                                                                      Pondération
+
+     API et projet logiciel — équipe                                                 35 %
+
+     Réflexion individuelle                                                          10 %
+
+     ÉPREUVE SYNTHÈSE                                                                45 %
+
+
+
+
+ API et projet logiciel — 35 %
+Le développement de l’API représente 35 % de la note finale. L’évaluation porte notamment sur :
+
+  le respect des besoins du client et le fonctionnement de l’API;
+  la représentation des règles du domaine;
+  la qualité de la conception et de l’architecture;
+  la qualité du code et l’évolutivité de la solution;
+  les tests et la gestion des erreurs;
+  l’intégration des fonctionnalités;
+  les trois User Stories proposées par l’équipe;
+  la méthode de travail utilisée pendant le projet.
+   Note d’équipe
+   La note obtenue pour cette partie est normalement une note d’équipe.
+
+
+L’enseignant se réserve toutefois le droit d’ajuster individuellement la note d’un membre lorsque sa contribution
+ne correspond manifestement pas au travail attendu.
+
+Cela peut notamment s’appliquer lorsqu’un membre :
+
+  participe très peu au développement;
+  ne réalise pas les tâches auxquelles il s’est engagé;
+  contribue très peu aux Pull Requests ou aux revues de code;
+  ne participe pas aux discussions de l’équipe;
+  est incapable d’expliquer le fonctionnement général du projet;
+  laisse systématiquement les autres membres effectuer son travail.
+L’objectif n’est pas de mesurer la contribution selon le nombre de lignes de code produites. Une contribution
+peut prendre différentes formes; l’objectif est d’assurer une participation réelle de tous les membres.
+
+
+
+
+© Charles Viau — Distribution, utilisation et partage interdits sans consentement.                        420-310-MV
+ ARCHITECTURE LOGICIELLE                                                                           PROJET DE SESSION · API RPG
+
+
+ Réflexion individuelle — 10 %
+La dernière période de cours sera consacrée à une réflexion individuelle sur le projet réalisé pendant la session.
+Cette réflexion représente 10 % de la note finale.
+
+Elle permettra à chaque étudiant de revenir sur son expérience de développement, les décisions prises pendant
+le projet et sa compréhension de l’architecture obtenue.
+
+   Consignes
+   Les consignes précises et les critères d’évaluation de cette réflexion seront remis lors de la dernière période de cours.
+
+
+
+
+23. Hors portée de la première version
+Le studio ne demande pas encore :
+
+  une carte tactique ou un déplacement case par case;
+  la gestion précise des distances ou des lignes de vue;
+  un moteur graphique ou une interface utilisateur complète;
+  du jeu en temps réel ou des WebSockets;
+  du joueur contre joueur;
+  un système économique complet;
+  de la fabrication d’objets.
+Ces éléments pourront éventuellement être ajoutés dans de futures versions.
+
+
+24. Résultat attendu
+À la fin du projet, le studio souhaite disposer d’un moteur de jeu accessible par API permettant à plusieurs
+joueurs de préparer et de vivre une aventure simple comprenant notamment des joueurs, des héros, des lobbys,
+des groupes, des rencontres, des combats au tour par tour, de l’initiative, des armes, des armures, des objets,
+des créatures, différents comportements de créatures, des sorts, des soins, des effets temporaires, de
+l’expérience, des niveaux, des récompenses, du repos, une sauvegarde de l’état et un historique des
+événements.
+
+   Critère essentiel
+   Le moteur doit avant tout représenter correctement les règles du jeu et rester capable d’évoluer lorsque de nouveaux
+   besoins sont exprimés.
+
+
+
+
+© Charles Viau — Distribution, utilisation et partage interdits sans consentement.                                   420-310-MV
+
