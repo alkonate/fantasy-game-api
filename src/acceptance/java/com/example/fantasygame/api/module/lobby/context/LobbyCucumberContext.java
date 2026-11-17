@@ -1,7 +1,6 @@
 package com.example.fantasygame.api.module.lobby.context;
 
 import com.example.fantasygame.api.module.lobby.application.LobbyService;
-import com.example.fantasygame.api.module.lobby.infrastructure.FakePlayerGateway;
 import com.example.fantasygame.api.module.lobby.infrastructure.TestInMemoryEventBus;
 import com.example.fantasygame.api.module.lobby.infrastructure.TestInMemoryLobbyRepository;
 
@@ -13,15 +12,13 @@ public class LobbyCucumberContext {
     // so what the DSL does on the fakes is what the service sees.
     private final TestInMemoryLobbyRepository repository = new TestInMemoryLobbyRepository();
     private final TestInMemoryEventBus bus = new TestInMemoryEventBus();
-    private final FakePlayerGateway playerGateway = new FakePlayerGateway();
-    private final LobbyService lobbyService = new LobbyService(repository, bus, playerGateway);
+    private final LobbyService lobbyService = new LobbyService(repository, bus);
 
     private Object lastResult;
     private Exception caughtException;
 
     public TestInMemoryLobbyRepository getRepository() { return repository; }
     public TestInMemoryEventBus getBus()               { return bus; }
-    public FakePlayerGateway getPlayerGateway()        { return playerGateway; }
     public LobbyService getLobbyService()              { return lobbyService; }
 
     public void setLastResult(Object result)           { this.lastResult = result; }

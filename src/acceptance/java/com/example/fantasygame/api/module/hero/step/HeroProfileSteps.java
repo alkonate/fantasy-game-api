@@ -18,11 +18,6 @@ public class HeroProfileSteps {
 
     // --- Given ---
 
-    @Given("Je suis enregistré comme joueur")
-    public void jeSuisEnregistreCommeJoueur() {
-        dsl.registerDefaultPlayer();
-    }
-
     @Given("Aucun profil de héros n'existe encore")
     public void aucunProfilDeHerosNExisteEncore() {
         dsl.deleteAllHeroProfiles();
@@ -31,11 +26,6 @@ public class HeroProfileSteps {
     @Given("Un profil de héros de nom {string} existe déjà")
     public void unProfilDeHerosDeNomExisteDeja(String name) {
         dsl.saveHeroProfileNamed(name);
-    }
-
-    @Given("Je ne suis pas enregistré comme joueur")
-    public void jeNeSuisPasEnregistreCommeJoueur() {
-        dsl.unregisterDefaultPlayer();
     }
 
     // --- When ---
@@ -71,11 +61,6 @@ public class HeroProfileSteps {
     @And("Une erreur d'unicité est levée")
     public void uneErreurDUniciteEstLevee() {
         dsl.assertNameUniquenessErrorIsRaised();
-    }
-
-    @And("Une erreur de joueur introuvable est levée")
-    public void uneErreurDeJoueurIntrouvableEstLevee() {
-        dsl.assertPlayerNotFoundErrorIsRaised();
     }
 
     @And("Une erreur d'espèce inconnue est levée")

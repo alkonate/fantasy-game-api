@@ -39,7 +39,7 @@ src/acceptance/
     context/                    état partagé d'un scénario, câblage du service avec les faux
     dsl/                        <Contexte>Dsl : givens, actions, assertions
     step/                       steps Cucumber (une ligne vers le DSL)
-    infrastructure/             faux : FakePlayerGateway, TestInMemoryEventBus, TestInMemory<Agrégat>Repository
+    infrastructure/             faux : TestInMemoryEventBus, TestInMemory<Agrégat>Repository
 ```
 
 ## Décisions d'architecture (DDD)
@@ -47,9 +47,11 @@ src/acceptance/
   séparé ne se justifie que s'il a ses propres règles, son propre cycle de vie ou son propre processus.
   Une copie locale qui ne contient qu'un identifiant est un signe de découpage trop fin.
 - Les agrégats se référencent entre eux par identifiant. Un agrégat ne vérifie que ses propres invariants.
-  Les vérifications externes (le joueur existe, le héros appartient au joueur) sont faites dans le
-  use case, via une **gateway** définie par le contexte qui en a besoin (`PlayerGateway`).
-  Pas de copie locale alimentée par événements pour savoir si une entité existe.
+  Les vérifications externes (ex. le héros appartient au joueur) sont faites dans le use case, via une
+  **gateway** définie par le contexte qui en a besoin. Pas de copie locale alimentée par événements
+  pour savoir si une entité existe.
+- Décision d'équipe : le `playerId` reçu est fait confiance (identité authentifiée) ; aucun use case ne
+  vérifie que le joueur existe (pas de `PlayerGateway`, pas d'erreur « joueur inconnu »).
 - Un use case ne contient aucune règle du jeu : il charge, vérifie le externe, appelle le domaine,
   sauvegarde, publie les événements.
 - La commande est un DTO de types simples (String, Integer, UUID, Map). Le use case convertit en
@@ -129,11 +131,11 @@ L'orchestrateur et les transitions (verrouiller, fermer, déverrouiller) viendro
 - Restrictions d'équipement : les « armes de mêlée » du Guerrier incluent-elles le bâton et la dague ?
 
 ## État d'avancement
-- Fait : contexte héros (création du profil : nominal, nom déjà utilisé, joueur inconnu, espèce inconnue).
-- Fait : contexte lobby (création du lobby : nominal avec événement `LobbyCreatedEvent`, joueur inconnu,
+- Fait : contexte héros (création du profil : nominal, nom déjà utilisé, espèce inconnue).
+- Fait : contexte lobby (création du lobby : nominal avec événement `LobbyCreatedEvent`,
   joueur déjà dans un lobby).
 - Fait (branche `feat/join_lobby`) : rejoindre un lobby (nominal avec événement `PlayerJoinedLobbyEvent`,
-  lobby plein, lobby verrouillé, lobby fermé, joueur inconnu, lobby inexistant, joueur déjà dans un lobby).
+  lobby plein, lobby verrouillé, lobby fermé, lobby inexistant, joueur déjà dans un lobby).
   `Lobby` porte un `LobbyStatus` ; `Lobby.restore(...)` reconstruit un lobby stocké
   sans vérifier de règle (utilisé par les Given). Le lancement de la partie n'existe pas encore.
 - À faire : choisir un héros, lancer la partie, puis partie, rencontres, combat.
